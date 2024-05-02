@@ -1,0 +1,23 @@
+name: PerpsV3
+description: Kwenta Perps V3 graph
+networks:
+  - id: 8453 # Base
+    start_block: 4382
+    contracts:
+      - name: PerpsV3MarketProxy
+        abi_file_path: abis/PerpsV3MarketProxy.json
+        address: 0x0A2AF931eFFd34b81ebcc57E3d3c9B1E1dE1C9Ce
+        handler: ./src/EventHandlers.ts
+        events:
+          - event: AccountCreated
+          - event: OrderSettled
+          - event: MarketCreated
+          - event: PositionLiquidated
+          - event: SettlementStrategyAdded
+          - event: SettlementStrategySet
+          - event: MarketUpdated
+          - event: PermissionGranted
+          - event: PermissionRevoked
+          - event: CollateralModified
+          - event: OrderCommitted
+          - event: InterestCharged

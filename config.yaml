@@ -16,8 +16,8 @@ networks:
           - event: SettlementStrategyAdded
           - event: SettlementStrategySet
           - event: MarketUpdated
-          - event: PermissionGranted # 🚧
-          - event: PermissionRevoked # 🚧
+          - event: PermissionGranted # ✅
+          - event: PermissionRevoked # ✅
           - event: CollateralModified
           - event: OrderCommitted
           - event: InterestCharged

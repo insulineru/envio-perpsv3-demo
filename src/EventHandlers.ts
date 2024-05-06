@@ -1,4 +1,4 @@
-import { PerpsV3MarketProxyContract_AccountCreated_handler, PerpsV3MarketProxyContract_AccountCreated_loader, PerpsV3MarketProxyContract_MarketCreated_handler, PerpsV3MarketProxyContract_MarketCreated_loader, PerpsV3MarketProxyContract_OrderSettled_handler, PerpsV3MarketProxyContract_OrderSettled_loader, PerpsV3MarketProxyContract_PositionLiquidated_handler, PerpsV3MarketProxyContract_PositionLiquidated_loader } from "../generated/src/Handlers.gen";
+import { PerpsV3MarketProxyContract_AccountCreated_handler, PerpsV3MarketProxyContract_AccountCreated_loader, PerpsV3MarketProxyContract_MarketCreated_handler, PerpsV3MarketProxyContract_MarketCreated_loader, PerpsV3MarketProxyContract_OrderSettled_handler, PerpsV3MarketProxyContract_OrderSettled_loader, PerpsV3MarketProxyContract_PermissionGranted_handler, PerpsV3MarketProxyContract_PermissionGranted_loader, PerpsV3MarketProxyContract_PermissionRevoked_handler, PerpsV3MarketProxyContract_PermissionRevoked_handlerAsync, PerpsV3MarketProxyContract_PermissionRevoked_loader, PerpsV3MarketProxyContract_PositionLiquidated_handler, PerpsV3MarketProxyContract_PositionLiquidated_loader } from "../generated/src/Handlers.gen";
 import { ETHER, getAbs } from "./helpers/bigint";
 
 PerpsV3MarketProxyContract_MarketCreated_loader(({ event, context }) => {
@@ -107,6 +107,72 @@ PerpsV3MarketProxyContract_PositionLiquidated_handler(({ event, context }) => {
         liquidations: account.liquidations + BigInt(1),
       })
     }
+  }
+})
+
+PerpsV3MarketProxyContract_PermissionGranted_loader(({ event, context }) => {
+  context.AccountPermissionUsers.load(`${event.params.accountId.toString()}-${event.params.user}`, { loadAccount: true })
+})
+
+PerpsV3MarketProxyContract_PermissionGranted_handler(({ event, context }) => {
+  const { blockNumber, blockTimestamp, params } = event;
+  const { accountId, user, permission } = params;
+  const account = context.Account.get(accountId.toString());
+
+  const permissionId = `${accountId.toString()}-${user}`;
+  const permissionUser = context.AccountPermissionUsers.get(permissionId);
+
+  if (!account) {
+    console.warn(`Account ${accountId} not found`)
+    return
+  }
+
+  if (permissionUser) {
+    context.AccountPermissionUsers.set({
+      ...permissionUser,
+      permissions: [...permissionUser.permissions, permission],
+      updated_at: BigInt(blockTimestamp),
+      updated_at_block: BigInt(blockNumber),
+    })
+  } else {
+    context.AccountPermissionUsers.set({
+      id: permissionId,
+      account_id: accountId.toString(),
+      address: user,
+      created_at: BigInt(blockTimestamp),
+      created_at_block: BigInt(blockNumber),
+      updated_at: BigInt(blockTimestamp),
+      updated_at_block: BigInt(blockNumber),
+      permissions: [params.permission],
+    })
+  }
+})
+
+PerpsV3MarketProxyContract_PermissionRevoked_loader(({ event, context }) => {
+  context.AccountPermissionUsers.load(`${event.params.accountId.toString()}-${event.params.user}`, { loadAccount: true })
+})
+
+PerpsV3MarketProxyContract_PermissionRevoked_handler(({ event, context }) => {
+  const { blockNumber, blockTimestamp, params } = event;
+  const { accountId, user, permission } = params;
+  const account = context.Account.get(accountId.toString());
+
+  const permissionId = `${accountId.toString()}-${user}`;
+  const permissionUser = context.AccountPermissionUsers.get(permissionId);
+
+  if (!account) {
+    console.warn(`Account ${accountId} not found`)
+    return
+  }
+
+  if (permissionUser) {
+    const permissions = permissionUser.permissions.filter(p => p !== permission);
+    context.AccountPermissionUsers.set({
+      ...permissionUser,
+      permissions,
+      updated_at: BigInt(blockTimestamp),
+      updated_at_block: BigInt(blockNumber),
+    })
   }
 })
 

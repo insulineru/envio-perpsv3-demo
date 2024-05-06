@@ -9,15 +9,15 @@ networks:
         address: 0x0A2AF931eFFd34b81ebcc57E3d3c9B1E1dE1C9Ce
         handler: ./src/EventHandlers.ts
         events:
-          - event: AccountCreated
+          - event: AccountCreated # ✅
           - event: OrderSettled
-          - event: MarketCreated
-          - event: PositionLiquidated
+          - event: MarketCreated # ✅
+          - event: PositionLiquidated # ✅
           - event: SettlementStrategyAdded
           - event: SettlementStrategySet
           - event: MarketUpdated
-          - event: PermissionGranted
-          - event: PermissionRevoked
+          - event: PermissionGranted # 🚧
+          - event: PermissionRevoked # 🚧
           - event: CollateralModified
           - event: OrderCommitted
           - event: InterestCharged

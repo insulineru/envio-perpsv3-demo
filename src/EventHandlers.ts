@@ -91,7 +91,7 @@ PerpsV3MarketProxyContract_PositionLiquidated_handler(({ event, context }) => {
     console.warn(`Open position ${positionId} not found`);
     return;
   } else if (openPosition.position_id) {
-    const position = context.PerpsV3Position.get(openPosition.position_id);
+    const position = context.OpenPerpsV3Position.getPosition(openPosition);
     if (position) {
       context.PerpsV3Position.set({
         ...position,
@@ -286,7 +286,7 @@ PerpsV3MarketProxyContract_OrderSettled_handlerAsync(async ({ event, context }) 
   } else {
     const notionalValue = getAbs(event.params.sizeDelta) * event.params.fillPrice
 
-    const position = await context.PerpsV3Position.get(openPosition.position_id)
+    const position = await context.OpenPerpsV3Position.getPosition(openPosition)
 
     if (!position) {
       console.warn(`Position ${openPosition.position_id} not found`)

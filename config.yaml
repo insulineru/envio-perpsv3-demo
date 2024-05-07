@@ -10,7 +10,8 @@ networks:
         handler: ./src/EventHandlers.ts
         events:
           - event: AccountCreated # ✅
-          - event: OrderSettled
+          - event: OrderSettled # ✅
+            isAsync: true
           - event: MarketCreated # ✅
           - event: PositionLiquidated # ✅
           - event: SettlementStrategyAdded
@@ -19,5 +20,5 @@ networks:
           - event: PermissionGranted # ✅
           - event: PermissionRevoked # ✅
           - event: CollateralModified
-          - event: OrderCommitted
+          - event: OrderCommitted # ✅
           - event: InterestCharged

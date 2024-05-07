@@ -25,7 +25,30 @@ type AccountPermissionUsers @entity {
   updated_at_block: BigInt!
 }
 
-type Order @entity {
+type OrderSettled @entity {
+  id: ID!
+  timestamp: BigInt!
+  marketId: BigInt!
+  accountId: BigInt!
+  account: Account!
+  orderCommitted: OrderCommitted
+  fillPrice: BigInt!
+  accruedFunding: BigInt!
+  sizeDelta: BigInt!
+  newSize: BigInt!
+  totalFees: BigInt!
+  referralFees: BigInt!
+  collectedFees: BigInt!
+  settlementReward: BigInt!
+  trackingCode: Bytes!
+  settler: Bytes!
+  pnl: BigInt!
+  txnHash: String!
+  interestCharged: BigInt
+  position: PerpsV3Position
+}
+
+type OrderCommitted @entity {
   id: ID!
   timestamp: BigInt!
   marketId: BigInt!
@@ -33,29 +56,19 @@ type Order @entity {
   account: Account!
   orderType: Int!
   sizeDelta: BigInt!
-  newSize: BigInt!
-  commitmentTxnHash: String!
-  settlementTxnHash: String
+  acceptablePrice: BigInt!
   commitmentTime: BigInt!
-  settlementTime: BigInt
-  fillPrice: BigInt
-  acceptablePrice: BigInt
-  accruedFunding: BigInt
-  totalFees: BigInt!
-  referralFees: BigInt
-  collectedFees: BigInt
-  settlementReward: BigInt
+  expectedPriceTime: BigInt!
+  settlementTime: BigInt!
+  expirationTime: BigInt!
   trackingCode: Bytes!
-  settler: Bytes
-  status: OrderStatus!
-  pnl: BigInt
-  interestCharged: BigInt
-  position: PerpsV3Position
+  sender: Bytes!
+  txnHash: String!
 }
 
-enum OrderStatus {
-  Committed
-  Settled
+type PendingOrder @entity {
+  id: ID!
+  orderCommittedId: String!
 }
 
 type PerpsV3Position @entity {
@@ -71,7 +84,7 @@ type PerpsV3Position @entity {
   isLiquidated: Boolean!
   liquidation: PositionLiquidation
   totalTrades: BigInt!
-  trades: [Order!]! @derivedFrom(field: "position")
+  trades: [OrderSettled!]! @derivedFrom(field: "position")
   totalVolume: BigInt!
   size: BigInt!
   realizedPnl: BigInt!
@@ -158,6 +171,7 @@ type PerpsV3AggregateStat @entity {
 type PnlSnapshot @entity {
   id: ID!
   pnl: BigInt!
+  accountId: BigInt!
   timestamp: BigInt!
 }
 

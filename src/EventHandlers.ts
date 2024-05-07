@@ -1,4 +1,5 @@
-import { PerpsV3MarketProxyContract_AccountCreated_handler, PerpsV3MarketProxyContract_AccountCreated_loader, PerpsV3MarketProxyContract_MarketCreated_handler, PerpsV3MarketProxyContract_MarketCreated_loader, PerpsV3MarketProxyContract_OrderSettled_handler, PerpsV3MarketProxyContract_OrderSettled_loader, PerpsV3MarketProxyContract_PermissionGranted_handler, PerpsV3MarketProxyContract_PermissionGranted_loader, PerpsV3MarketProxyContract_PermissionRevoked_handler, PerpsV3MarketProxyContract_PermissionRevoked_handlerAsync, PerpsV3MarketProxyContract_PermissionRevoked_loader, PerpsV3MarketProxyContract_PositionLiquidated_handler, PerpsV3MarketProxyContract_PositionLiquidated_loader } from "../generated/src/Handlers.gen";
+import { PerpsV3MarketProxyContract_AccountCreated_handler, PerpsV3MarketProxyContract_AccountCreated_loader, PerpsV3MarketProxyContract_MarketCreated_handler, PerpsV3MarketProxyContract_MarketCreated_loader, PerpsV3MarketProxyContract_OrderCommitted_handler, PerpsV3MarketProxyContract_OrderSettled_handlerAsync, PerpsV3MarketProxyContract_OrderSettled_loader, PerpsV3MarketProxyContract_PermissionGranted_handler, PerpsV3MarketProxyContract_PermissionGranted_loader, PerpsV3MarketProxyContract_PermissionRevoked_handler, PerpsV3MarketProxyContract_PermissionRevoked_loader, PerpsV3MarketProxyContract_PositionLiquidated_handler, PerpsV3MarketProxyContract_PositionLiquidated_loader } from "../generated/src/Handlers.gen";
+import { PerpsV3MarketProxyContract_OrderCommittedEvent_perpsV3AggregateStatEntityHandlerContextAsync, perpsV3AggregateStatEntity } from "../generated/src/Types.gen";
 import { ETHER, getAbs } from "./helpers/bigint";
 
 PerpsV3MarketProxyContract_MarketCreated_loader(({ event, context }) => {
@@ -48,6 +49,7 @@ PerpsV3MarketProxyContract_PositionLiquidated_loader(({ event, context }) => {
 
   context.PerpsV3Market.load(marketId.toString())
   context.OpenPerpsV3Position.load(positionId, { loadPosition: { loadAccount: true } });
+  context.Account.load(accountId.toString())
 })
 
 PerpsV3MarketProxyContract_PositionLiquidated_handler(({ event, context }) => {
@@ -112,6 +114,7 @@ PerpsV3MarketProxyContract_PositionLiquidated_handler(({ event, context }) => {
 
 PerpsV3MarketProxyContract_PermissionGranted_loader(({ event, context }) => {
   context.AccountPermissionUsers.load(`${event.params.accountId.toString()}-${event.params.user}`, { loadAccount: true })
+  context.Account.load(event.params.accountId.toString())
 })
 
 PerpsV3MarketProxyContract_PermissionGranted_handler(({ event, context }) => {
@@ -150,6 +153,7 @@ PerpsV3MarketProxyContract_PermissionGranted_handler(({ event, context }) => {
 
 PerpsV3MarketProxyContract_PermissionRevoked_loader(({ event, context }) => {
   context.AccountPermissionUsers.load(`${event.params.accountId.toString()}-${event.params.user}`, { loadAccount: true })
+  context.Account.load(event.params.accountId.toString())
 })
 
 PerpsV3MarketProxyContract_PermissionRevoked_handler(({ event, context }) => {
@@ -176,60 +180,348 @@ PerpsV3MarketProxyContract_PermissionRevoked_handler(({ event, context }) => {
   }
 })
 
-// PerpsV3MarketProxyContract_OrderSettled_loader(({ event, context }) => {
-//   // const orderId = `${event.params.accountId.toString()}-${event.blockTimestamp.toString()}`;
-//   const pendingOrderId = `${event.params.accountId.toString()}-${event.params.marketId.toString()}`;
-//   const openPositionId = `${event.params.marketId.toString()}-${event.params.accountId.toString()}`;
+PerpsV3MarketProxyContract_OrderSettled_loader(({ event, context }) => {
+  const openPositionId = `${event.params.marketId.toString()}-${event.params.accountId.toString()}`;
 
-//   context.PendingOrder.load(pendingOrderId)
-//   context.InterestCharged.load(`${event.params.accountId.toString()}-${event.transactionHash}`)
-//   context.OpenPerpsV3Position.load(openPositionId, { loadPosition: { loadAccount: true, loadLiquidation: { loadPosition: undefined } } })
-//   // context.PerpsV3Position.load
-//   // context.Account.load(event.params.accountId.toString())
-//   // context.PerpsV3Stat.load
-//   // context.PerpsV3Market.load()
+  context.InterestCharged.load(`${event.params.accountId.toString()}-${event.transactionHash}`)
+  context.OpenPerpsV3Position.load(openPositionId, { loadPosition: { loadAccount: true, loadLiquidation: { loadPosition: undefined } } })
+  context.PerpsV3Market.load(event.params.marketId.toString())
+  context.PendingOrder.load(`${event.params.accountId.toString()}-${event.params.marketId.toString()}`)
+  context.Account.load(event.params.accountId.toString())
+  context.OrderSettled.load(`${event.params.accountId.toString()}-${event.blockTimestamp.toString()}`, { loadAccount: true, loadPosition: { loadAccount: undefined, loadLiquidation: undefined } })
 
-// })
+  context.PerpsV3AggregateStat.load(`${event.params.marketId.toString()}-${event.blockTimestamp.toString()}-ALL`)
+})
 
-// PerpsV3MarketProxyContract_OrderSettled_handler(({ event, context }) => {
-//   const pendingOrderId = `${event.params.accountId.toString()}-${event.params.marketId.toString()}`;
-//   const orderId = `${event.params.accountId.toString()}-${event.blockTimestamp.toString()}`;
+PerpsV3MarketProxyContract_OrderSettled_handlerAsync(async ({ event, context }) => {
+  const pendingOrderId = `${event.params.accountId.toString()}-${event.params.marketId.toString()}`;
+  const orderId = `${event.params.accountId.toString()}-${event.blockTimestamp.toString()}`;
 
-//   const pendingOrder = context.PendingOrder.get(pendingOrderId);
-//   const account = context.Account.get(event.params.accountId.toString())
+  const pendingOrder = await context.PendingOrder.get(pendingOrderId);
+  const account = await context.Account.get(event.params.accountId.toString())
 
-//   if (!account) {
-//     console.warn(`Account ${event.params.accountId} not found`)
-//     return
-//   }
+  if (!account) {
+    console.warn(`Account ${event.params.accountId} not found`)
+    return
+  }
 
-//   const openPositionId = `${event.params.marketId.toString()}-${event.params.accountId.toString()}`;
-//   const openPosition = context.OpenPerpsV3Position.get(openPositionId)
+  const openPositionId = `${event.params.marketId.toString()}-${event.params.accountId.toString()}`;
+  const openPosition = await context.OpenPerpsV3Position.get(openPositionId)
 
-//   const interestCharged = context.InterestCharged.get(`${event.params.accountId.toString()}-${event.transactionHash}`)
+  const interestCharged = await context.InterestCharged.get(`${event.params.accountId.toString()}-${event.transactionHash}`)
 
-//   const statId = `${account.id}-${account.owner}`
-//   const stat = context.PerpsV3Stat.get()
-//   context.OrderSettled.set({
-//     id: orderId,
-//     accountId: event.params.accountId,
-//     account_id: event.params.accountId.toString(),
-//     txnHash: event.transactionHash,
-//     accruedFunding: event.params.accruedFunding,
-//     collectedFees: event.params.collectedFees,
-//     fillPrice: event.params.fillPrice,
-//     marketId: event.params.marketId,
-//     timestamp: BigInt(event.blockTimestamp),
-//     totalFees: event.params.totalFees,
-//     trackingCode: event.params.trackingCode,
-//     settlementReward: event.params.settlementReward,
-//     sizeDelta: event.params.sizeDelta,
-//     newSize: event.params.newSize,
-//     referralFees: event.params.referralFees,
-//     settler: event.params.settler,
-//     pnl: BigInt(0),
-//     orderCommitted_id: pendingOrder?.id,
-//     interestCharged: interestCharged?.interest,
-//     position_id: openPosition?.position_id
-//   })
-// })
+  context.OrderSettled.set({
+    id: orderId,
+    accountId: event.params.accountId,
+    account_id: event.params.accountId.toString(),
+    txnHash: event.transactionHash,
+    accruedFunding: event.params.accruedFunding,
+    collectedFees: event.params.collectedFees,
+    fillPrice: event.params.fillPrice,
+    marketId: event.params.marketId,
+    timestamp: BigInt(event.blockTimestamp),
+    totalFees: event.params.totalFees,
+    trackingCode: event.params.trackingCode,
+    settlementReward: event.params.settlementReward,
+    sizeDelta: event.params.sizeDelta,
+    newSize: event.params.newSize,
+    referralFees: event.params.referralFees,
+    settler: event.params.settler,
+    pnl: BigInt(0),
+    orderCommitted_id: pendingOrder?.orderCommittedId,
+    interestCharged: interestCharged?.interest,
+    position_id: openPosition?.position_id
+  })
+
+  const volume = getAbs(getAbs(event.params.sizeDelta) * event.params.fillPrice / ETHER)
+
+  if (!openPosition?.position_id) {
+    const marketEntity = await context.PerpsV3Market.get(event.params.marketId.toString())
+
+    if (!marketEntity) {
+      console.warn(`Market ${event.params.marketId} not found`)
+      return
+    }
+
+    context.PerpsV3Position.set({
+      id: `${openPositionId}-${event.blockTimestamp.toString()}`,
+      marketId: event.params.marketId,
+      marketSymbol: marketEntity.marketSymbol,
+      accountId: event.params.accountId,
+      account_id: event.params.accountId.toString(),
+      isLiquidated: false,
+      isOpen: true,
+      size: event.params.sizeDelta,
+      timestamp: BigInt(event.blockTimestamp),
+      openTimestamp: BigInt(event.blockTimestamp),
+      avgEntryPrice: event.params.fillPrice,
+      totalTrades: BigInt(1),
+      entryPrice: event.params.fillPrice,
+      lastPrice: event.params.fillPrice,
+      realizedPnl: BigInt(0),
+      feesPaid: event.params.totalFees,
+      netFunding: event.params.accruedFunding,
+      pnlWithFeesPaid: BigInt(0),
+      totalVolume: volume,
+      totalReducedNotional: BigInt(0),
+      closeTimestamp: undefined,
+      exitPrice: undefined,
+      liquidation_id: undefined,
+    })
+
+    context.OpenPerpsV3Position.set({
+      id: openPositionId,
+      position_id: `${openPositionId}-${event.blockTimestamp.toString()}`,
+    })
+
+    await updateAggregateStatEntities(context.PerpsV3AggregateStat, event.params.marketId, marketEntity.marketSymbol, BigInt(event.blockTimestamp), BigInt(1), volume)
+
+    context.Account.set({
+      ...account,
+      feesPaid: account.feesPaid + event.params.totalFees,
+      totalTrades: account.totalTrades + BigInt(1),
+      totalVolume: account.totalVolume + volume,
+    })
+  } else {
+    const notionalValue = getAbs(event.params.sizeDelta) * event.params.fillPrice
+
+    const position = await context.PerpsV3Position.get(openPosition.position_id)
+
+    if (!position) {
+      console.warn(`Position ${openPosition.position_id} not found`)
+      return
+    }
+
+    const modifiedPosition = {
+      ...position,
+      feesPaid: position.feesPaid + event.params.totalFees,
+      netFunding: position.netFunding + event.params.accruedFunding,
+      size: position.size + event.params.sizeDelta,
+    }
+
+    await updateAggregateStatEntities(context.PerpsV3AggregateStat, position.marketId, position.marketSymbol, BigInt(event.blockTimestamp), BigInt(1), volume)
+
+    const isClose = event.params.newSize === BigInt(0);
+    const isFlip = position.size < BigInt(0) && event.params.newSize > BigInt(0) || position.size > BigInt(0) && event.params.newSize < BigInt(0);
+
+    context.Account.set({
+      ...account,
+      feesPaid: account.feesPaid + event.params.totalFees - event.params.accruedFunding,
+      totalTrades: isClose ? account.totalTrades : account.totalTrades + BigInt(1),
+      totalVolume: isClose ? account.totalVolume : account.totalVolume + volume,
+    })
+
+    if (isClose) {
+      modifiedPosition.isOpen = false;
+      modifiedPosition.closeTimestamp = BigInt(event.blockTimestamp);
+      modifiedPosition.exitPrice = event.params.fillPrice;
+      modifiedPosition.totalReducedNotional = modifiedPosition.totalReducedNotional + notionalValue;
+
+      context.OpenPerpsV3Position.set({
+        id: openPositionId,
+        position_id: undefined,
+      })
+
+      // Calculate PnL method (move to helper function)
+      const updatedAccount = await context.Account.get(event.params.accountId.toString());
+      const updatedOrder = await context.OrderSettled.get(orderId);
+
+      if (!updatedAccount || !updatedOrder) {
+        console.warn(`Account ${event.params.accountId} or Order ${orderId} not found`)
+        return
+      }
+
+      const pnl = (event.params.fillPrice - modifiedPosition.avgEntryPrice) * getAbs(event.params.sizeDelta) * modifiedPosition.size > BigInt(0) ? BigInt(1) : BigInt(-1) / ETHER;
+
+      modifiedPosition.realizedPnl = modifiedPosition.realizedPnl + pnl;
+      modifiedPosition.pnlWithFeesPaid = modifiedPosition.realizedPnl - modifiedPosition.feesPaid + modifiedPosition.netFunding + (interestCharged?.interest || BigInt(0));
+      context.OrderSettled.set({
+        ...updatedOrder,
+        pnl: updatedOrder.pnl + pnl,
+      })
+
+      context.Account.set({
+        ...updatedAccount,
+        pnl: updatedAccount.pnl + pnl,
+        pnlWithFeesPaid: updatedAccount.pnlWithFeesPaid + pnl - updatedOrder.totalFees + updatedOrder.accruedFunding + (interestCharged?.interest || BigInt(0)),
+      })
+
+      context.PnlSnapshot.set({
+        id: `${modifiedPosition.id}-${event.blockTimestamp.toString()}-${event.transactionHash}`,
+        pnl,
+        timestamp: BigInt(event.blockTimestamp),
+        accountId: event.params.accountId,
+      })
+      // Calculate PnL method END
+    } else {
+      modifiedPosition.totalTrades = modifiedPosition.totalTrades + BigInt(1);
+      modifiedPosition.totalVolume = modifiedPosition.totalVolume + volume;
+
+      if (isFlip) {
+        modifiedPosition.avgEntryPrice = event.params.fillPrice;
+        modifiedPosition.entryPrice = event.params.fillPrice;
+        // Calculate PnL method (move to helper function)
+        const updatedAccount = await context.Account.get(event.params.accountId.toString());
+        const updatedOrder = await context.OrderSettled.get(orderId);
+
+        if (!updatedAccount || !updatedOrder) {
+          console.warn(`Account ${event.params.accountId} or Order ${orderId} not found`)
+          return
+        }
+
+        const pnl = (event.params.fillPrice - modifiedPosition.avgEntryPrice) * getAbs(event.params.sizeDelta) * modifiedPosition.size > BigInt(0) ? BigInt(1) : BigInt(-1) / ETHER;
+
+        modifiedPosition.realizedPnl = modifiedPosition.realizedPnl + pnl;
+        modifiedPosition.pnlWithFeesPaid = modifiedPosition.realizedPnl - modifiedPosition.feesPaid + modifiedPosition.netFunding + (interestCharged?.interest || BigInt(0));
+        context.OrderSettled.set({
+          ...updatedOrder,
+          pnl: updatedOrder.pnl + pnl,
+        })
+
+        context.Account.set({
+          ...updatedAccount,
+          pnl: updatedAccount.pnl + pnl,
+          pnlWithFeesPaid: updatedAccount.pnlWithFeesPaid + pnl - updatedOrder.totalFees + updatedOrder.accruedFunding + (interestCharged?.interest || BigInt(0)),
+        })
+
+        context.PnlSnapshot.set({
+          id: `${modifiedPosition.id}-${event.blockTimestamp.toString()}-${event.transactionHash}`,
+          pnl,
+          timestamp: BigInt(event.blockTimestamp),
+          accountId: event.params.accountId,
+        })
+        // Calculate PnL method END
+      } else if (getAbs(event.params.newSize) > getAbs(position.size)) {
+        // If ths positions size is increasing then recalculate the average entry price
+        const existingNotional = getAbs(position.size) * position.avgEntryPrice;
+        modifiedPosition.avgEntryPrice = (existingNotional + notionalValue) / getAbs(event.params.newSize);
+      } else {
+        // Calculate PnL method (move to helper function)
+        const updatedAccount = await context.Account.get(event.params.accountId.toString());
+        const updatedOrder = await context.OrderSettled.get(orderId);
+
+        if (!updatedAccount || !updatedOrder) {
+          console.warn(`Account ${event.params.accountId} or Order ${orderId} not found`)
+          return
+        }
+
+        const pnl = (event.params.fillPrice - modifiedPosition.avgEntryPrice) * getAbs(event.params.sizeDelta) * modifiedPosition.size > BigInt(0) ? BigInt(1) : BigInt(-1) / ETHER;
+
+        modifiedPosition.realizedPnl = modifiedPosition.realizedPnl + pnl;
+        modifiedPosition.pnlWithFeesPaid = modifiedPosition.realizedPnl - modifiedPosition.feesPaid + modifiedPosition.netFunding + (interestCharged?.interest || BigInt(0));
+        context.OrderSettled.set({
+          ...updatedOrder,
+          pnl: updatedOrder.pnl + pnl,
+        })
+
+        context.Account.set({
+          ...updatedAccount,
+          pnl: updatedAccount.pnl + pnl,
+          pnlWithFeesPaid: updatedAccount.pnlWithFeesPaid + pnl - updatedOrder.totalFees + updatedOrder.accruedFunding + (interestCharged?.interest || BigInt(0)),
+        })
+
+        context.PnlSnapshot.set({
+          id: `${modifiedPosition.id}-${event.blockTimestamp.toString()}-${event.transactionHash}`,
+          pnl,
+          timestamp: BigInt(event.blockTimestamp),
+          accountId: event.params.accountId,
+        })
+        // Calculate PnL method END
+      }
+    }
+
+    context.PerpsV3Position.set(modifiedPosition)
+  }
+})
+
+PerpsV3MarketProxyContract_OrderCommitted_handler(({ event, context }) => {
+  const { acceptablePrice, accountId, commitmentTime, expectedPriceTime, expirationTime, marketId, orderType, sender, settlementTime, sizeDelta, trackingCode } = event.params
+  const orderId = `${event.params.accountId.toString()}-${event.blockTimestamp.toString()}`;
+  const pendingOrderId = `${event.params.accountId.toString()}-${event.params.marketId.toString()}`;
+
+  context.PendingOrder.set({
+    id: pendingOrderId,
+    orderCommittedId: orderId,
+  })
+
+  context.OrderCommitted.set({
+    id: orderId,
+    timestamp: BigInt(event.blockTimestamp),
+    marketId,
+    accountId,
+    account_id: accountId.toString(),
+    orderType: parseFloat(orderType.toString()),
+    sizeDelta,
+    acceptablePrice,
+    commitmentTime,
+    expectedPriceTime,
+    settlementTime,
+    expirationTime,
+    trackingCode,
+    sender,
+    txnHash: event.transactionHash,
+  })
+})
+
+const ONE_HOUR_SECONDS = BigInt(3600);
+const DAY_SECONDS = BigInt(86400);
+
+const AGG_PERIODS = [ONE_HOUR_SECONDS, DAY_SECONDS];
+async function updateAggregateStatEntities(context: PerpsV3MarketProxyContract_OrderCommittedEvent_perpsV3AggregateStatEntityHandlerContextAsync, marketId: bigint, marketSymbol: string, timestamp: bigint, trades: bigint, volume: bigint) {
+  for (let period = 0; period < AGG_PERIODS.length; period++) {
+    const thisPeriod = AGG_PERIODS[period];
+    const aggTimestamp = getTimeID(timestamp, thisPeriod);
+
+    // update the aggregate for this market
+    const aggStats = await getOrCreateMarketAggregateStats(context, marketId, marketSymbol, aggTimestamp, thisPeriod);
+    context.set({
+      ...aggStats,
+      trades: aggStats.trades + trades,
+      volume: aggStats.volume + volume,
+    })
+
+    // update the aggregate for all markets
+    const aggCumulativeStats = await getOrCreateMarketAggregateStats(context, BigInt(0), 'ALL', aggTimestamp, thisPeriod);
+    context.set({
+      ...aggCumulativeStats,
+      trades: aggCumulativeStats.trades + trades,
+      volume: aggCumulativeStats.volume + volume,
+    })
+  }
+}
+
+export function getTimeID(timestamp: bigint, num: bigint): bigint {
+  const remainder = timestamp % num;
+  return timestamp - remainder;
+}
+
+async function getOrCreateMarketAggregateStats(
+  context: PerpsV3MarketProxyContract_OrderCommittedEvent_perpsV3AggregateStatEntityHandlerContextAsync,
+  marketId: bigint,
+  marketSymbol: string,
+  timestamp: bigint,
+  period: bigint,
+): Promise<perpsV3AggregateStatEntity> {
+  // helper function for creating a market aggregate entity if one doesn't exist
+  // this allows functions to safely call this function without checking for null
+  const id = `${timestamp.toString()}-${period.toString()}-${marketSymbol}`;
+  const aggStats = await context.get(id);
+
+  if (aggStats) {
+    return aggStats;
+  }
+
+  context.set({
+    id,
+    period,
+    timestamp,
+    marketId,
+    marketSymbol,
+    trades: BigInt(0),
+    volume: BigInt(0),
+  })
+
+  const newAggStats = await context.get(id);
+
+  return newAggStats!;
+}

@@ -627,7 +627,7 @@ PerpsV3MarketProxyContract_MarketUpdated_handlerAsync(async ({ event, context })
   }
 })
 
-export const FUNDING_RATE_PERIOD_TYPES: fundingRatePeriodType[] = ['Daily', 'Hourly'] ;
+export const FUNDING_RATE_PERIOD_TYPES: fundingRatePeriodType[] = ['Daily', 'Hourly'];
 export const FUNDING_RATE_PERIODS = [DAY_SECONDS, ONE_HOUR_SECONDS];
 
 PerpsV3MarketProxyContract_CollateralModified_loader(({ event, context }) => {

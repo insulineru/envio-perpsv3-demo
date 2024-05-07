@@ -196,6 +196,7 @@ type PositionLiquidation @entity {
 
 type InterestCharged @entity {
   id: ID!
+  accountId: BigInt!
   timestamp: BigInt!
   block: BigInt!
   interest: BigInt!

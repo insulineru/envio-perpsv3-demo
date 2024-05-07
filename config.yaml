@@ -14,11 +14,12 @@ networks:
             isAsync: true
           - event: MarketCreated # ✅
           - event: PositionLiquidated # ✅
-          - event: SettlementStrategyAdded
-          - event: SettlementStrategySet
-          - event: MarketUpdated
+          - event: SettlementStrategyAdded # ✅
+          - event: SettlementStrategySet # ✅
+          - event: MarketUpdated # ✅
+            isAsync: true
           - event: PermissionGranted # ✅
           - event: PermissionRevoked # ✅
-          - event: CollateralModified
+          - event: CollateralModified # ✅
           - event: OrderCommitted # ✅
-          - event: InterestCharged
+          - event: InterestCharged # ✅

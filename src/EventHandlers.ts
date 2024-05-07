@@ -1,4 +1,5 @@
-import { PerpsV3MarketProxyContract_AccountCreated_handler, PerpsV3MarketProxyContract_AccountCreated_loader, PerpsV3MarketProxyContract_MarketCreated_handler, PerpsV3MarketProxyContract_MarketCreated_loader, PerpsV3MarketProxyContract_OrderCommitted_handler, PerpsV3MarketProxyContract_OrderSettled_handlerAsync, PerpsV3MarketProxyContract_OrderSettled_loader, PerpsV3MarketProxyContract_PermissionGranted_handler, PerpsV3MarketProxyContract_PermissionGranted_loader, PerpsV3MarketProxyContract_PermissionRevoked_handler, PerpsV3MarketProxyContract_PermissionRevoked_loader, PerpsV3MarketProxyContract_PositionLiquidated_handler, PerpsV3MarketProxyContract_PositionLiquidated_loader } from "../generated/src/Handlers.gen";
+import { fundingRatePeriodType } from "../generated/src/Enums.gen";
+import { PerpsV3MarketProxyContract_AccountCreated_handler, PerpsV3MarketProxyContract_AccountCreated_loader, PerpsV3MarketProxyContract_CollateralModified_handler, PerpsV3MarketProxyContract_CollateralModified_loader, PerpsV3MarketProxyContract_InterestCharged_handler, PerpsV3MarketProxyContract_InterestCharged_loader, PerpsV3MarketProxyContract_MarketCreated_handler, PerpsV3MarketProxyContract_MarketCreated_loader, PerpsV3MarketProxyContract_MarketUpdated_handlerAsync, PerpsV3MarketProxyContract_MarketUpdated_loader, PerpsV3MarketProxyContract_OrderCommitted_handler, PerpsV3MarketProxyContract_OrderSettled_handlerAsync, PerpsV3MarketProxyContract_OrderSettled_loader, PerpsV3MarketProxyContract_PermissionGranted_handler, PerpsV3MarketProxyContract_PermissionGranted_loader, PerpsV3MarketProxyContract_PermissionRevoked_handler, PerpsV3MarketProxyContract_PermissionRevoked_loader, PerpsV3MarketProxyContract_PositionLiquidated_handler, PerpsV3MarketProxyContract_PositionLiquidated_loader, PerpsV3MarketProxyContract_SettlementStrategyAdded_handler, PerpsV3MarketProxyContract_SettlementStrategySet_handler, PerpsV3MarketProxyContract_SettlementStrategySet_loader } from "../generated/src/Handlers.gen";
 import { PerpsV3MarketProxyContract_OrderCommittedEvent_perpsV3AggregateStatEntityHandlerContextAsync, perpsV3AggregateStatEntity } from "../generated/src/Types.gen";
 import { ETHER, getAbs } from "./helpers/bigint";
 
@@ -525,3 +526,155 @@ async function getOrCreateMarketAggregateStats(
 
   return newAggStats!;
 }
+
+PerpsV3MarketProxyContract_SettlementStrategyAdded_handler(({ event, context }) => {
+  context.SettlementStrategy.set({
+    id: `${event.params.strategyId.toString()}-${event.params.marketId.toString()}`,
+    strategyId: event.params.strategyId,
+    marketId: event.params.marketId,
+    strategyType: parseFloat(event.params.strategy[0].toString()),
+    settlementDelay: event.params.strategy[1],
+    settlementWindowDuration: event.params.strategy[2],
+    priceVerificationContract: event.params.strategy[3],
+    feedId: event.params.strategy[4],
+    settlementReward: event.params.strategy[5],
+    enabled: !event.params.strategy[6],
+    commitmentPriceDelay: event.params.strategy[7],
+  })
+})
+
+PerpsV3MarketProxyContract_SettlementStrategySet_loader(({ event, context }) => {
+  context.SettlementStrategy.load(`${event.params.strategyId.toString()}-${event.params.marketId.toString()}`)
+})
+
+PerpsV3MarketProxyContract_SettlementStrategySet_handler(({ event, context }) => {
+  const strategyId = `${event.params.strategyId.toString()}-${event.params.marketId.toString()}`;
+
+  const strategy = context.SettlementStrategy.get(strategyId);
+
+  if (!strategy) {
+    console.warn(`Strategy ${strategyId} not found`);
+    return;
+  }
+
+  context.SettlementStrategy.set({
+    ...strategy,
+    strategyType: parseFloat(event.params.strategy[0].toString()),
+    settlementDelay: event.params.strategy[1],
+    settlementWindowDuration: event.params.strategy[2],
+    priceVerificationContract: event.params.strategy[3],
+    feedId: event.params.strategy[4],
+    settlementReward: event.params.strategy[5],
+    enabled: !event.params.strategy[6],
+    commitmentPriceDelay: event.params.strategy[7],
+  })
+})
+
+PerpsV3MarketProxyContract_MarketUpdated_loader(({ event, context }) => {
+  context.PerpsV3Market.load(event.params.marketId.toString())
+})
+
+PerpsV3MarketProxyContract_MarketUpdated_handlerAsync(async ({ event, context }) => {
+  const { price, marketId, currentFundingRate } = event.params;
+
+  const market = await context.PerpsV3Market.get(marketId.toString());
+
+  context.MarketPriceUpdate.set({
+    id: `${price.toString()}-${event.blockTimestamp.toString()}-${marketId.toString()}`,
+    marketId,
+    timestamp: BigInt(event.blockTimestamp),
+    price
+  })
+
+  if (!market) {
+    console.warn(`Market ${marketId} not found for MarketUpdated event`);
+    return;
+  }
+
+  context.FundingRateUpdate.set({
+    id: `${marketId.toString()}-${event.transactionHash}`,
+    timestamp: BigInt(event.blockTimestamp),
+    marketId,
+    fundingRate: currentFundingRate,
+    marketSymbol: market.marketSymbol,
+    marketName: market.marketName,
+  })
+
+  for (let p = 0; p < FUNDING_RATE_PERIODS.length; p++) {
+    const periodSeconds = FUNDING_RATE_PERIODS[p];
+    const periodType = FUNDING_RATE_PERIOD_TYPES[p];
+    const periodId = getTimeID(BigInt(event.blockTimestamp), periodSeconds);
+
+    const id = `${market.marketSymbol}-${periodType}-${periodId.toString()}`;
+
+    const existingPeriod = await context.FundingRatePeriod.get(id);
+
+    if (!existingPeriod) {
+      context.FundingRatePeriod.set({
+        id,
+        marketSymbol: market.marketSymbol,
+        marketName: market.marketName,
+        period: periodType,
+        timestamp: periodId,
+        fundingRate: currentFundingRate,
+      })
+    } else {
+      context.FundingRatePeriod.set({
+        ...existingPeriod,
+        fundingRate: currentFundingRate,
+      })
+    }
+  }
+})
+
+export const FUNDING_RATE_PERIOD_TYPES: fundingRatePeriodType[] = ['Daily', 'Hourly'] ;
+export const FUNDING_RATE_PERIODS = [DAY_SECONDS, ONE_HOUR_SECONDS];
+
+PerpsV3MarketProxyContract_CollateralModified_loader(({ event, context }) => {
+  context.Account.load(event.params.accountId.toString())
+})
+
+PerpsV3MarketProxyContract_CollateralModified_handler(({ event, context }) => {
+  const { accountId, amountDelta, sender, synthMarketId } = event.params;
+
+  const account = context.Account.get(accountId.toString());
+
+  if (!account) {
+    console.warn(`Account ${accountId} not found for CollateralModified event`);
+    return;
+  }
+
+  context.CollateralChange.set({
+    id: `${accountId.toString()}-${event.transactionHash}`,
+    accountId,
+    timestamp: BigInt(event.blockTimestamp),
+    amountDelta,
+    sender,
+    txHash: event.transactionHash,
+    synthId: synthMarketId,
+  })
+})
+
+PerpsV3MarketProxyContract_InterestCharged_loader(({ event, context }) => {
+  context.Account.load(event.params.accountId.toString())
+})
+
+PerpsV3MarketProxyContract_InterestCharged_handler(({ event, context }) => {
+  const { accountId, interest } = event.params;
+
+  const account = context.Account.get(accountId.toString());
+
+  if (!account) {
+    console.warn(`Account ${accountId} not found for CollateralModified event`);
+    return;
+  }
+
+  context.InterestCharged.set({
+    id: `${accountId.toString()}-${event.transactionHash}`,
+    accountId,
+    block: BigInt(event.blockNumber),
+    timestamp: BigInt(event.blockTimestamp),
+    interest,
+    txHash: event.transactionHash,
+  })
+})

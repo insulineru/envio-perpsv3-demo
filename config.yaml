@@ -4,6 +4,14 @@ networks:
   - id: 8453 # Base
     start_block: 4382
     contracts:
+      - name: Engine
+        abi_file_path: abis/EngineImplementation.json
+        address: 0xe331a7eeC851Ba702aA8BF43070a178451d6D28E
+        handler: ./src/EngineHandlers.ts
+        events:
+          - event: Credited
+          - event: Debited
+          - event: ConditionalOrderExecuted
       - name: PerpsV3MarketProxy
         abi_file_path: abis/PerpsV3MarketProxy.json
         address: 0x0A2AF931eFFd34b81ebcc57E3d3c9B1E1dE1C9Ce

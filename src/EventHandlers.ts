@@ -40,6 +40,7 @@ PerpsV3MarketProxyContract_AccountCreated_handler(({ event, context }) => {
       pnlWithFeesPaid: BigInt(0),
       totalTrades: BigInt(0),
       totalVolume: BigInt(0),
+      credit: BigInt(0),
     })
   }
 })

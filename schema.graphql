@@ -12,6 +12,7 @@ type Account @entity {
   liquidations: BigInt!
   totalTrades: BigInt!
   totalVolume: BigInt!
+  credit: BigInt!
 }
 
 type AccountPermissionUsers @entity {
@@ -200,5 +201,14 @@ type InterestCharged @entity {
   timestamp: BigInt!
   block: BigInt!
   interest: BigInt!
+  txHash: String!
+}
+
+type CreditDebitEvent @entity {
+  id: ID!
+  accountId: BigInt!
+  timestamp: BigInt!
+  block: BigInt!
+  amount: BigInt!
   txHash: String!
 }
